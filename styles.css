@@ -1,0 +1,355 @@
+/* ToolTorrent Extractor — styles.css
+   Todos os seletores usam prefixo #tt- ou .tt- para evitar conflitos. */
+
+/* === FAB === */
+#tt-fab {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 20px rgba(102, 126, 234, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2147483647;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  animation: tt-pulse 3s infinite;
+}
+
+#tt-fab:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6), 0 0 30px rgba(102, 126, 234, 0.4);
+}
+
+#tt-fab:active {
+  transform: scale(0.95);
+}
+
+@keyframes tt-pulse {
+  0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 20px rgba(102,126,234,0.3); }
+  50%       { box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 30px rgba(102,126,234,0.5); }
+}
+
+/* === Modal Overlay === */
+#tt-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2147483646;
+  backdrop-filter: blur(8px);
+  animation: tt-fadein 0.3s ease;
+}
+
+@keyframes tt-fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* === Modal Content === */
+.tt-modal-content {
+  background: #1a1a1a;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 40px rgba(102,126,234,0.2);
+  border: 1px solid #333;
+  animation: tt-slideup 0.3s ease;
+}
+
+@keyframes tt-slideup {
+  from { transform: translateY(50px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* === Header === */
+.tt-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px 16px 0 0;
+  gap: 16px;
+}
+
+.tt-modal-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tt-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 28px;
+  color: #fff;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.tt-close-btn:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+/* === Body === */
+.tt-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+  background: #1a1a1a;
+  scrollbar-width: thin;
+  scrollbar-color: #667eea #1a1a1a;
+}
+
+.tt-modal-body::-webkit-scrollbar { width: 10px; }
+.tt-modal-body::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 5px; }
+.tt-modal-body::-webkit-scrollbar-thumb { background: #667eea; border-radius: 5px; }
+.tt-modal-body::-webkit-scrollbar-thumb:hover { background: #764ba2; }
+
+.tt-section {
+  margin-bottom: 30px;
+}
+
+.tt-section h3 {
+  margin: 0 0 14px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+/* === Select Controls === */
+.tt-select-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.tt-select-controls button {
+  padding: 7px 14px;
+  border: 1px solid #667eea;
+  background: #242424;
+  color: #667eea;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s, transform 0.1s;
+}
+
+.tt-select-controls button:hover {
+  background: #667eea;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* === Image Grid === */
+.tt-images-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.tt-image-item {
+  position: relative;
+  border: 2px solid #333;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #242424;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.tt-image-item:hover {
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+}
+
+.tt-image-item label {
+  display: block;
+  cursor: pointer;
+  position: relative;
+}
+
+.tt-image-item img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  display: block;
+  filter: brightness(0.9);
+  transition: filter 0.2s;
+}
+
+.tt-image-item:hover img {
+  filter: brightness(1);
+}
+
+.tt-img-checkbox {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  z-index: 10;
+  accent-color: #667eea;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+.tt-no-images {
+  color: #666;
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* === Textarea === */
+#tt-torrent-info {
+  width: 100%;
+  padding: 16px;
+  border: 1px solid #333;
+  border-radius: 10px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  resize: vertical;
+  background: #242424;
+  color: #e0e0e0;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+  scrollbar-width: thin;
+  scrollbar-color: #667eea #1a1a1a;
+}
+
+#tt-torrent-info:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102,126,234,0.2);
+  background: #2a2a2a;
+}
+
+#tt-torrent-info::-webkit-scrollbar { width: 10px; }
+#tt-torrent-info::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 5px; }
+#tt-torrent-info::-webkit-scrollbar-thumb { background: #667eea; border-radius: 5px; }
+#tt-torrent-info::-webkit-scrollbar-thumb:hover { background: #764ba2; }
+
+/* === Footer === */
+.tt-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #333;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  background: #1a1a1a;
+  border-radius: 0 0 16px 16px;
+}
+
+.tt-btn-primary,
+.tt-btn-secondary {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.tt-btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(102,126,234,0.3);
+}
+
+.tt-btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102,126,234,0.5);
+}
+
+.tt-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.tt-btn-secondary {
+  background: #333;
+  color: #e0e0e0;
+  border: 1px solid #444;
+}
+
+.tt-btn-secondary:hover {
+  background: #444;
+  border-color: #555;
+}
+
+/* === Checkbox .torrent no footer === */
+.tt-torrent-check-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #aaa;
+  font-size: 13px;
+  cursor: pointer;
+  margin-right: auto;
+  user-select: none;
+}
+
+.tt-torrent-check-label input[type="checkbox"] {
+  accent-color: #667eea;
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+/* === Responsivo === */
+@media (max-width: 768px) {
+  .tt-modal-content {
+    width: 95%;
+    max-height: 95vh;
+    border-radius: 12px;
+  }
+
+  .tt-modal-header {
+    border-radius: 12px 12px 0 0;
+    padding: 14px 16px;
+  }
+
+  .tt-modal-header h2 { font-size: 14px; }
+
+  .tt-images-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+
+  .tt-image-item img { height: 100px; }
+
+  .tt-modal-body { padding: 16px; }
+
+  .tt-select-controls { flex-direction: column; }
+  .tt-select-controls button { width: 100%; }
+
+  #tt-fab { width: 48px; height: 48px; top: 10px; right: 10px; }
+}

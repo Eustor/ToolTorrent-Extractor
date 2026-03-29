@@ -1,0 +1,16 @@
+# Pasta de referência interna (não faz parte da extensão)
+others/
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Logs
+*.log
