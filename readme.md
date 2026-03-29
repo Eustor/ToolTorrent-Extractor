@@ -51,6 +51,9 @@ Downloads/ToolTorrent/<Titulo do Torrent>/
 Para adicionar um novo domínio, edite o array `matches` em `manifest.json`
 e recarregue a extensão em `chrome://extensions/`.
 
+Aceito convites para outros Trackers, para testes e adequações:
+eustor@protonmail.com
+
 ## Configuração
 
 Edite o objeto `CONFIG` no topo de `content.js`:
