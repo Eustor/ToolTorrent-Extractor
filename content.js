@@ -135,11 +135,17 @@
       if (el) {
         // Clona para remover comentários sem afetar a página
         mainColumn = el.cloneNode(true);
-        const commentSelectors = [
+        const removeSelectors = [
+          // Seção de comentários
           '[class*="comment"]', '[id*="comment"]', '.comments', '#comments',
+          // UI de adicionar comentário, formulários, botões de ação
+          'form', 'noscript', 'script', 'style',
+          '[class*="add_comment"]', '[id*="add_comment"]',
+          '[class*="reply"]', '[class*="report"]', '[class*="quote"]',
+          '[class*="sidebar"]',
         ];
-        commentSelectors.forEach((cSel) => {
-          mainColumn.querySelectorAll(cSel).forEach((node) => node.remove());
+        removeSelectors.forEach((sel) => {
+          mainColumn.querySelectorAll(sel).forEach((node) => node.remove());
         });
         break;
       }
@@ -164,6 +170,7 @@
 
       // Texto da descrição — converte tags HTML para quebras de linha legíveis
       data.descriptionText = mainColumn.innerHTML
+        .replace(/<!--[\s\S]*?-->/g, '')   // remove comentários HTML (<!-- ... -->)
         .replace(/<br\s*\/?>/gi, '\n')
         .replace(/<\/p>/gi, '\n\n')
         .replace(/<\/div>/gi, '\n')
@@ -174,7 +181,9 @@
         .replace(/&amp;/g, '&')
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
-        .replace(/\n{3,}/g, '\n\n')
+        .replace(/-->/g, '')               // remove --> soltos que escaparam
+        .replace(/[ \t]+$/gm, '')          // remove espaços no fim de cada linha
+        .replace(/\n{3,}/g, '\n\n')        // normaliza múltiplas linhas em branco
         .trim();
     }
 
