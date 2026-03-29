@@ -199,35 +199,60 @@
   }
 
   /**
-   * Encontra a URL de download do arquivo .torrent.
-   * Tenta primeiro um link <a href*="action=download"> na página;
-   * caso não encontre, constrói a URL a partir do parâmetro ?id= da página atual.
-   * Retorna null se não conseguir determinar.
+   * Coleta todos os links de download de .torrent da página.
+   * Retorna array de { url, label }.
    */
-  function extractTorrentFileUrl() {
-    // 1. Procura link de download direto na página
-    const downloadSelectors = [
-      'a[href*="action=download"]',
-      'a[href*="torrents.php?action=download"]',
-      'a.torrent_download',
-      'a[title*="Download Torrent"]',
-      'a[title*="download torrent"]',
-    ];
-    for (const sel of downloadSelectors) {
-      const el = document.querySelector(sel);
-      if (el && el.href) {
-        // Garante que a URL aponta para um .torrent (não um magnet)
-        if (!el.href.startsWith('magnet:')) return el.href;
+  function extractTorrentLinks() {
+    const links = [];
+    const seen  = new Set();
+
+    document.querySelectorAll('a[href*="action=download"], a.torrent_download').forEach((el) => {
+      const url = el.href;
+      if (!url || url.startsWith('magnet:') || seen.has(url)) return;
+      seen.add(url);
+
+      // Tenta obter label descritivo: texto do link, título, ou célula da tabela
+      let label = el.textContent.trim();
+      if (!label) label = el.title.trim();
+      if (!label) label = el.closest('td')?.textContent.trim() || '';
+      if (!label) label = el.closest('tr')?.querySelector('td')?.textContent.trim() || '';
+      label = label.substring(0, 100) || 'Torrent';
+
+      links.push({ url, label });
+    });
+
+    // Fallback: constrói URL a partir do ?id= da página atual
+    if (links.length === 0) {
+      const idMatch = window.location.search.match(/[?&]id=(\d+)/);
+      if (idMatch) {
+        const base = window.location.origin + window.location.pathname;
+        links.push({
+          url: `${base}?action=download&id=${idMatch[1]}&source=details`,
+          label: 'Torrent',
+        });
       }
     }
 
-    // 2. Fallback: constrói a URL a partir do ?id= da página atual
-    const idMatch = window.location.search.match(/[?&]id=(\d+)/);
-    if (idMatch) {
-      const base = window.location.origin + window.location.pathname;
-      return `${base}?action=download&id=${idMatch[1]}&source=details`;
-    }
+    return links;
+  }
 
+  /**
+   * Busca o nome real do arquivo via cabeçalho Content-Disposition do servidor.
+   * Retorna null se não conseguir determinar.
+   */
+  async function fetchTorrentFilename(url) {
+    try {
+      const res = await fetch(url, { method: 'HEAD', credentials: 'include' });
+      const cd  = res.headers.get('Content-Disposition');
+      if (cd) {
+        // RFC 5987: filename*=UTF-8''nome%20arquivo.torrent
+        const rfc = cd.match(/filename\*=UTF-8''([^;\s]+)/i);
+        if (rfc) return decodeURIComponent(rfc[1]);
+        // Simples: filename="nome.torrent" ou filename=nome.torrent
+        const simple = cd.match(/filename[^;=\n]*=\s*['"]?([^'"\n;]+)/i);
+        if (simple) return simple[1].trim().replace(/^["']|["']$/g, '');
+      }
+    } catch (_) {}
     return null;
   }
 
@@ -363,29 +388,42 @@
   }
 
   function downloadImage(url, index, folderName) {
-    let ext = 'jpg';
+    let name = '';
     try {
-      const clean = url.split('?')[0].split('#')[0];
-      const possible = clean.split('.').pop().toLowerCase();
-      if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(possible)) ext = possible;
+      const pathname = new URL(url).pathname;
+      name = decodeURIComponent(pathname.split('/').pop());
     } catch (_) {}
 
-    const filename = `${folderName}/image_${String(index + 1).padStart(3, '0')}.${ext}`;
-    return sendDownload(url, filename);
+    // Fallback se não conseguir extrair nome válido com extensão
+    if (!name || !name.includes('.')) {
+      let ext = 'jpg';
+      try {
+        const clean = url.split('?')[0].split('#')[0];
+        const possible = clean.split('.').pop().toLowerCase();
+        if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(possible)) ext = possible;
+      } catch (_) {}
+      name = `image_${String(index + 1).padStart(3, '0')}.${ext}`;
+    }
+
+    return sendDownload(url, `${folderName}/${sanitizeFilename(name)}`);
   }
 
   async function downloadAll(modal) {
-    const torrentData    = modal._torrentData;
-    const allImages      = modal._allImages;
-    const torrentFileUrl = modal._torrentFileUrl;
+    const torrentData   = modal._torrentData;
+    const allImages     = modal._allImages;
+    const torrentLinks  = modal._torrentLinks;
 
+    // Torrents selecionados
+    const selectedTorrents = [];
+    modal.querySelectorAll('.tt-torrent-checkbox').forEach((cb) => {
+      if (cb.checked) selectedTorrents.push(torrentLinks[parseInt(cb.dataset.index, 10)]);
+    });
+
+    // Imagens selecionadas
     const selectedImages = [];
     modal.querySelectorAll('.tt-img-checkbox').forEach((cb) => {
       if (cb.checked) selectedImages.push(allImages[parseInt(cb.dataset.index, 10)]);
     });
-
-    const downloadTorrentFile = torrentFileUrl &&
-      modal.querySelector('#tt-torrent-check')?.checked;
 
     const torrentInfo = modal.querySelector('#tt-torrent-info').value;
     const safeName    = sanitizeFilename(torrentData.title);
@@ -394,18 +432,22 @@
     const btn = modal.querySelector('#tt-download-btn');
     btn.disabled = true;
 
-    let totalCount = 1 + selectedImages.length + (downloadTorrentFile ? 1 : 0);
-    let downloaded = 0;
+    let totalCount = 1 + selectedImages.length + selectedTorrents.length;
+    let downloaded  = 0;
 
     try {
-      // 1. Arquivo .torrent
-      if (downloadTorrentFile) {
-        btn.textContent = `Baixando ${safeName}.torrent...`;
+      // 1. Arquivos .torrent selecionados
+      for (let i = 0; i < selectedTorrents.length; i++) {
+        const t = selectedTorrents[i];
+        btn.textContent = `Baixando torrent ${i + 1} de ${selectedTorrents.length}...`;
         try {
-          await sendDownload(torrentFileUrl, `${folderName}/${safeName}.torrent`);
+          // Busca nome real via Content-Disposition do servidor
+          let filename = await fetchTorrentFilename(t.url);
+          if (!filename) filename = `${safeName}${selectedTorrents.length > 1 ? `_${i + 1}` : ''}.torrent`;
+          await sendDownload(t.url, `${folderName}/${sanitizeFilename(filename)}`);
           downloaded++;
         } catch (err) {
-          console.warn('[ToolTorrent] Falha .torrent:', err.message);
+          console.warn(`[ToolTorrent] Falha torrent "${t.label}":`, err.message);
         }
         await sleep(CONFIG.DOWNLOAD_DELAY);
       }
@@ -458,15 +500,15 @@
     const existing = document.getElementById('tt-modal');
     if (existing) { existing.remove(); return; }
 
-    const torrentData    = extractTorrentData();
-    const allImages      = getAllImages();
-    const torrentFileUrl = extractTorrentFileUrl();
+    const torrentData  = extractTorrentData();
+    const allImages    = getAllImages();
+    const torrentLinks = extractTorrentLinks();
 
     const modal = document.createElement('div');
     modal.id = 'tt-modal';
-    modal._torrentData    = torrentData;
-    modal._allImages      = allImages;
-    modal._torrentFileUrl = torrentFileUrl;
+    modal._torrentData  = torrentData;
+    modal._allImages    = allImages;
+    modal._torrentLinks = torrentLinks;
 
     const imagesHtml = allImages.length === 0
       ? '<p class="tt-no-images">Nenhuma imagem encontrada.</p>'
@@ -480,6 +522,23 @@
           </div>
         `).join('');
 
+    const torrentsHtml = torrentLinks.length === 0 ? '' : `
+      <div class="tt-section">
+        <h3>Torrents disponíveis (${torrentLinks.length})</h3>
+        <div class="tt-torrent-list">
+          ${torrentLinks.map((t, i) => `
+            <label class="tt-torrent-item">
+              <input type="checkbox" class="tt-torrent-checkbox" data-index="${i}" checked>
+              <span class="tt-torrent-icon">⬇</span>
+              <div class="tt-torrent-info">
+                <span class="tt-torrent-filename tt-filename-loading" data-index="${i}">buscando nome...</span>
+                <span class="tt-torrent-label-hint">${escapeHtml(t.label)}</span>
+              </div>
+            </label>
+          `).join('')}
+        </div>
+      </div>`;
+
     modal.innerHTML = `
       <div class="tt-modal-content">
         <div class="tt-modal-header">
@@ -487,6 +546,7 @@
           <button class="tt-close-btn">&times;</button>
         </div>
         <div class="tt-modal-body">
+          ${torrentsHtml}
           <div class="tt-section">
             <h3>Imagens (${allImages.length})</h3>
             <div class="tt-select-controls">
@@ -501,11 +561,6 @@
           </div>
         </div>
         <div class="tt-modal-footer">
-          ${torrentFileUrl ? `
-          <label class="tt-torrent-check-label">
-            <input type="checkbox" id="tt-torrent-check" checked>
-            Baixar .torrent
-          </label>` : ''}
           <button id="tt-download-btn" class="tt-btn-primary">Baixar Selecionados</button>
           <button id="tt-cancel-btn" class="tt-btn-secondary">Cancelar</button>
         </div>
@@ -513,6 +568,19 @@
     `;
 
     document.body.appendChild(modal);
+
+    // Busca os nomes reais dos torrents em paralelo e atualiza o modal
+    torrentLinks.forEach((t, i) => {
+      const el = modal.querySelector(`.tt-torrent-filename[data-index="${i}"]`);
+      if (!el) return;
+      fetchTorrentFilename(t.url).then((name) => {
+        el.textContent = name || t.label;
+        el.classList.remove('tt-filename-loading');
+      }).catch(() => {
+        el.textContent = t.label;
+        el.classList.remove('tt-filename-loading');
+      });
+    });
 
     modal.querySelector('.tt-close-btn').addEventListener('click', () => modal.remove());
     modal.querySelector('#tt-cancel-btn').addEventListener('click', () => modal.remove());

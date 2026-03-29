@@ -142,6 +142,81 @@
   color: #e0e0e0;
 }
 
+/* === Lista de Torrents === */
+.tt-torrent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tt-torrent-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #242424;
+  border: 1px solid #333;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  user-select: none;
+}
+
+.tt-torrent-item:hover {
+  border-color: #667eea;
+  background: #2a2a2a;
+}
+
+.tt-torrent-item input[type="checkbox"] {
+  accent-color: #667eea;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tt-torrent-icon {
+  color: #667eea;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.tt-torrent-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.tt-torrent-filename {
+  color: #e0e0e0;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tt-filename-loading {
+  color: #555;
+  font-style: italic;
+  animation: tt-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes tt-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.tt-torrent-label-hint {
+  color: #555;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* === Select Controls === */
 .tt-select-controls {
   display: flex;
@@ -306,24 +381,6 @@
   border-color: #555;
 }
 
-/* === Checkbox .torrent no footer === */
-.tt-torrent-check-label {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: #aaa;
-  font-size: 13px;
-  cursor: pointer;
-  margin-right: auto;
-  user-select: none;
-}
-
-.tt-torrent-check-label input[type="checkbox"] {
-  accent-color: #667eea;
-  width: 15px;
-  height: 15px;
-  cursor: pointer;
-}
 
 /* === Responsivo === */
 @media (max-width: 768px) {
