@@ -143,6 +143,16 @@
           '[class*="add_comment"]', '[id*="add_comment"]',
           '[class*="reply"]', '[class*="report"]', '[class*="quote"]',
           '[class*="sidebar"]',
+          // Lista de arquivos do torrent e informações de peers
+          '[class*="filelist"]', '[id*="filelist"]',
+          '[class*="file_list"]', '[id*="file_list"]',
+          '[class*="files"]', '#files',
+          '[class*="peers"]', '[class*="seeder"]', '[class*="leecher"]',
+          // Ações de torrent (favoritar, votar, denunciar)
+          '[class*="vote"]', '[class*="bookmark"]',
+          '[class*="torrent_action"]', '[class*="actions"]',
+          // Cabeçalhos/navegação internos que não são descrição
+          '[class*="colhead"]', '[class*="thead"]',
         ];
         removeSelectors.forEach((sel) => {
           mainColumn.querySelectorAll(sel).forEach((node) => node.remove());
@@ -183,6 +193,18 @@
         .replace(/&gt;/g, '>')
         .replace(/-->/g, '')               // remove --> soltos que escaparam
         .replace(/[ \t]+$/gm, '')          // remove espaços no fim de cada linha
+        .split('\n')
+        .filter((line) => {
+          const t = line.trim();
+          // Remove linhas que são só artefatos de interface
+          if (t === '') return true;                                   // mantém linhas em branco
+          if (t.length <= 2) return false;                             // muito curtas ([ ] | ↑)
+          if (/^[-–—=_→←↑↓►◄▲▼|[\]{}()/\\]+$/.test(t)) return false; // só símbolos
+          if (/^(-->|-+>|=>)$/.test(t)) return false;                  // setas soltas
+          if (/^\s*\d+\s*$/.test(t)) return false;                     // só números (contadores)
+          return true;
+        })
+        .join('\n')
         .replace(/\n{3,}/g, '\n\n')        // normaliza múltiplas linhas em branco
         .trim();
     }
