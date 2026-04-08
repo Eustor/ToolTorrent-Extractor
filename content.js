@@ -20,7 +20,7 @@
     SAVE_AS: false,
 
     // Delay entre downloads de imagem (ms) — evita bloqueio por rate-limit
-    DOWNLOAD_DELAY: 150,
+    DOWNLOAD_DELAY: 200,
 
     // Prefixo da subpasta criada no diretório de downloads
     SUBFOLDER_PREFIX: 'ToolTorrent',
@@ -59,13 +59,21 @@
       url: window.location.href,
     };
 
-    // TÍTULO — tenta vários seletores comuns
+    // TÍTULO
+    // Gazelle: #torrent_details h1 | UNIT3D: h1[class*="torrent__title"], .torrent-show__name
     const titleSelectors = [
+      // Gazelle
       '#torrent_details h1',
       '.torrent_title',
       'h1.page-title',
       '.box h1',
       'h2.torrent-title',
+      // UNIT3D
+      'h1[class*="torrent__title"]',
+      'h2[class*="torrent__title"]',
+      '[class*="torrent-show__name"]',
+      '[class*="torrent__name"]',
+      'h1.torrent-title',
     ];
     for (const sel of titleSelectors) {
       const el = document.querySelector(sel);
@@ -75,15 +83,23 @@
       }
     }
     if (!data.title) {
-      data.title = document.title.split('::')[0].trim() || 'torrent_info';
+      data.title = document.title.split('::')[0].split('«')[0].trim() || 'torrent_info';
     }
 
-    // IMAGEM DA CAPA — div com classe contendo "covers" ou "cover"
+    // IMAGEM DA CAPA
+    // Gazelle: div[class*="cover"] img | UNIT3D: img[class*="poster"], .torrent-show__poster img
     const coverSelectors = [
+      // Gazelle
       'div[class*="covers"] img',
       'div[class*="cover"] img',
       '.torrent-cover img',
       '.poster img',
+      // UNIT3D
+      'img[class*="torrent__poster"]',
+      'img[class*="torrent-poster"]',
+      '[class*="torrent-show__poster"] img',
+      '[class*="torrent__cover"] img',
+      'img[class*="poster"]',
     ];
     for (const sel of coverSelectors) {
       const img = document.querySelector(sel);
@@ -93,12 +109,18 @@
       }
     }
 
-    // TABELA DE DETALHES — div com classe "box" excluindo comentários
+    // TABELA DE DETALHES
+    // Gazelle: table tr td | UNIT3D: dl dt/dd  ou  table com classes específicas
     const tableSelectors = [
+      // Gazelle
       'div[class*="box"]:not([class*="comment"]) table tr',
       '.torrent_detail_table tr',
       '#torrent_details table tr',
       '.box:not(.box_comments) table tr',
+      // UNIT3D
+      '[class*="torrent__details"] table tr',
+      '[class*="torrent-details"] table tr',
+      '.panel:not([class*="comment"]) table tr',
     ];
     let tableRows = null;
     for (const sel of tableSelectors) {
@@ -111,7 +133,6 @@
         if (cells.length >= 2) {
           const label = cells[0].textContent.trim();
           let value = cells[1].textContent.trim().replace(/\s+/g, ' ');
-          // Para categoria prefere o texto do link
           if (index === 1 || label.toLowerCase().includes('categor')) {
             const link = cells[1].querySelector('a');
             if (link) value = link.textContent.trim();
@@ -121,8 +142,37 @@
       });
     }
 
-    // DESCRIÇÃO E IMAGENS — div com classe "main_column" ou fallbacks
+    // UNIT3D: detalhes em lista de definição <dl><dt>Label</dt><dd>Valor</dd></dl>
+    if (data.details.length === 0) {
+      const dlSelectors = [
+        '[class*="torrent__details"] dl',
+        '[class*="torrent-details"] dl',
+        '[class*="torrent-show"] dl',
+        '.panel__body dl',
+      ];
+      for (const sel of dlSelectors) {
+        const dl = document.querySelector(sel);
+        if (!dl) continue;
+        const dts = dl.querySelectorAll('dt');
+        const dds = dl.querySelectorAll('dd');
+        dts.forEach((dt, i) => {
+          const label = dt.textContent.trim();
+          const value = dds[i]?.textContent.trim().replace(/\s+/g, ' ') || '';
+          if (label && value) data.details.push({ label, value });
+        });
+        if (data.details.length > 0) break;
+      }
+    }
+
+    // DESCRIÇÃO E IMAGENS
+    // Gazelle: div[class*="main_column"] | UNIT3D: div.panel__body.bbcode-rendered
     const mainColumnSelectors = [
+      // UNIT3D — mais específico, tem prioridade para evitar pegar conteúdo demais
+      'div.panel__body.bbcode-rendered',
+      'div[class*="bbcode-rendered"]',
+      'div[class*="bbcode_rendered"]',
+      '[class*="torrent__description"]',
+      // Gazelle
       'div[class*="main_column"]:not([class*="comment"])',
       '.torrent_description',
       '#description',
@@ -209,21 +259,38 @@
         .trim();
     }
 
-    // TAGS
+    // TAGS / KEYWORDS
+    // Gazelle: div[class*="box_tags"] a | UNIT3D: h3.meta-chip__value ou [class*="meta-chip"]
     const tagsSelectors = [
+      // Gazelle
       'div[class*="box_tags"]:not([class*="comment"])',
       '.torrent-tags',
       '.tags:not(.comment-tags)',
+      // UNIT3D
+      '[class*="meta-chip"]',
+      '[class*="torrent__keywords"]',
+      '[class*="keywords"]',
     ];
     for (const sel of tagsSelectors) {
-      const tagsDiv = document.querySelector(sel);
-      if (tagsDiv) {
-        tagsDiv.querySelectorAll('a').forEach((tag) => {
-          const text = tag.textContent.trim();
-          if (text) data.tags.push(text);
-        });
+      const container = document.querySelector(sel);
+      if (!container) continue;
+      // Tenta links primeiro, depois qualquer elemento com texto (h3, span, li)
+      const els = container.querySelectorAll('a, h3, span, li');
+      const found = [...(els.length ? els : [container])]
+        .map((el) => el.textContent.trim())
+        .filter((t) => t.length > 0 && t.length < 80);
+      if (found.length > 0) {
+        data.tags.push(...found);
         break;
       }
+    }
+
+    // UNIT3D: keywords podem ser múltiplos elementos independentes (sem container único)
+    if (data.tags.length === 0) {
+      document.querySelectorAll('h3.meta-chip__value, [class*="meta-chip__value"]').forEach((el) => {
+        const text = el.textContent.trim();
+        if (text && text.length < 80) data.tags.push(text);
+      });
     }
 
     return data;
@@ -237,23 +304,33 @@
     const links = [];
     const seen  = new Set();
 
-    document.querySelectorAll('a[href*="action=download"], a.torrent_download').forEach((el) => {
-      const url = el.href;
-      if (!url || url.startsWith('magnet:') || seen.has(url)) return;
-      seen.add(url);
+    // Gazelle: action=download | UNIT3D: /torrents/download/ | classe genérica
+    const linkSelectors = [
+      'a[href*="action=download"]',
+      'a[href*="/torrents/download/"]',
+      'a[href*="/torrent/download/"]',
+      'a.torrent_download',
+      'a[class*="torrent-download"]',
+    ];
 
-      // Tenta obter label descritivo: texto do link, título, ou célula da tabela
-      let label = el.textContent.trim();
-      if (!label) label = el.title.trim();
-      if (!label) label = el.closest('td')?.textContent.trim() || '';
-      if (!label) label = el.closest('tr')?.querySelector('td')?.textContent.trim() || '';
-      label = label.substring(0, 100) || 'Torrent';
+    linkSelectors.forEach((sel) => {
+      document.querySelectorAll(sel).forEach((el) => {
+        const url = el.href;
+        if (!url || url.startsWith('magnet:') || seen.has(url)) return;
+        seen.add(url);
 
-      links.push({ url, label });
+        let label = el.textContent.trim();
+        if (!label) label = el.title.trim();
+        if (!label) label = el.closest('td')?.textContent.trim() || '';
+        if (!label) label = el.closest('tr')?.querySelector('td')?.textContent.trim() || '';
+        label = label.substring(0, 100) || 'Torrent';
+
+        links.push({ url, label });
+      });
     });
 
-    // Fallback: constrói URL a partir do ?id= da página atual
     if (links.length === 0) {
+      // Fallback Gazelle: constrói a partir de ?id=
       const idMatch = window.location.search.match(/[?&]id=(\d+)/);
       if (idMatch) {
         const base = window.location.origin + window.location.pathname;
@@ -261,6 +338,17 @@
           url: `${base}?action=download&id=${idMatch[1]}&source=details`,
           label: 'Torrent',
         });
+      }
+
+      // Fallback UNIT3D: /torrents/{id} → /torrents/download/{id}
+      if (links.length === 0) {
+        const unit3dMatch = window.location.pathname.match(/^(\/torrents\/)(\d+)$/);
+        if (unit3dMatch) {
+          links.push({
+            url: `${window.location.origin}${unit3dMatch[1]}download/${unit3dMatch[2]}`,
+            label: 'Torrent',
+          });
+        }
       }
     }
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ToolTorrent Extractor",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Extrai metadados, imagens e descrição de páginas de torrent (Gazelle/UNIT3D) e baixa como arquivos organizados.",
   "permissions": [
     "downloads"
@@ -27,6 +27,7 @@
       "matches": [
         "https://bj-share.info/torrents.php*",
         "https://bj-share.me/torrents.php*",
+        "https://capybarabr.com/torrents/*",
         "https://tracker.shakaw.com.br/torrent.php*",
         "https://cliente.amigos-share.club/torrents-details.php*",
         "https://exoticaz.to/torrent/*",
